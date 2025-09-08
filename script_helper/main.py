@@ -5,24 +5,23 @@ import importlib.metadata
 import argparse
 import json
 
-def collect_packages_by_author_email(target_emails:list[str], python_packages_folder:str) -> dict[str, dict[str, str]]:
+def collect_packages_by_author_email(emails:list[str], python_packages_folder:str) -> dict[str, dict[str, str]]:
     """
     Collects metadata of all packages authored by the specified email address.
     
     Args:
-        target_emails (list[str]): The author emails list to search for
+        emails (list[str]): The author emails list to search for. If nothing is passed, the function returns all packages.
         python_packages_folder (str): The folder containing Python packages
         
     Returns:
         dict: Dictionary mapping package names to their metadata
     """
-    assert target_emails, "No target emails provided"
     assert Path(python_packages_folder).exists(), f"Folder {python_packages_folder} does not exist"
     assert Path(python_packages_folder).is_dir(), f"{python_packages_folder} is not a directory"
-    assert all(isinstance(email, str) for email in target_emails), "All target emails must be strings"
-    assert all('@' in email for email in target_emails), "All target emails must be valid email addresses"
+    assert all(isinstance(email, str) for email in emails), "All target emails must be strings"
+    assert all('@' in email for email in emails), "All target emails must be valid email addresses"
     result = {}
-    target_emails = [target_email.lower() for target_email in target_emails]
+    emails = [target_email.lower() for target_email in emails]
     dist_info_dirs = Path(python_packages_folder).glob('*.dist-info')
     for dist_info in dist_info_dirs:
         metadata_path = dist_info / 'METADATA'
@@ -32,7 +31,7 @@ def collect_packages_by_author_email(target_emails:list[str], python_packages_fo
             parser = email.parser.Parser()
             parsed_metadata = parser.parsestr(metadata_content)
             author_email = parsed_metadata.get('Author-email', '')
-            if author_email.lower() in target_emails:
+            if author_email.lower() in emails or emails == []:
                 package_name = dist_info.name.split('-')[0]
                 try:
                     full_metadata = dict(importlib.metadata.metadata(package_name))
@@ -43,6 +42,7 @@ def collect_packages_by_author_email(target_emails:list[str], python_packages_fo
                 except importlib.metadata.PackageNotFoundError:
                     result[package_name] = {k: v for k, v in parsed_metadata.items()}
                 result[package_name]['entry_points'] = []
+                result[package_name]['Author-email'] = author_email
     eps = importlib.metadata.entry_points(group='console_scripts')
     for ep in eps:
         if ep.dist and ep.dist.name in result:
@@ -54,7 +54,7 @@ def cli():
     Command-line interface for the script.
     """
     parser = argparse.ArgumentParser(description="Collect Python packages by author email.")
-    parser.add_argument('target_emails', nargs='+', help='List of author emails to search for')
+    parser.add_argument('--emails', nargs='+', default=[], help='List of author emails to search for')
     parser.add_argument('--python_packages_folder', default=r'C:\Program Files\Python313\Lib\site-packages',
                         help='Folder containing Python packages (default: %(default)s)')
     parser.add_argument('--requirements', action='store_true',
@@ -63,14 +63,18 @@ def cli():
                         help='Save results to a JSON file')
     args = parser.parse_args()
     packages = collect_packages_by_author_email(
-        target_emails=args.target_emails,
+        emails=args.emails,
         python_packages_folder=args.python_packages_folder
     )
     if args.save_json:
         with open('packages.json', 'w', encoding='utf-8') as f:
             json.dump(packages, f, indent=4)
         CLIPPrinter.green("Results saved to packages.json")
-    print(f"Found {len(packages)} packages by {', '.join(args.target_emails)}:")
+    if args.emails == []:
+        msg_complement = ""
+    else:
+        msg_complement = f" by {', '.join(args.emails)}"
+    print(f"Found {len(packages)} packages{msg_complement}:")
     for package_name, metadata in packages.items():
         CLIPPrinter.line_breaker()
         CLIPPrinter.green(f"\n{package_name}:")

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="script_helper",
-    version="0.1.1",
+    version="0.1.2",
     license="GNU General Public License",
     author="fcasalen",
     author_email="fcasalen@gmail.com",

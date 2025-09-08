@@ -24,6 +24,9 @@ packages = collect_packages_by_author_email(
 # CLI
 ```bash
 
+# Find all packages
+script_helper
+
 # Find packages by a single author email
 script_helper your.email@example.com
 

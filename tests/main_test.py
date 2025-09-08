@@ -73,13 +73,9 @@ def test_collect_packages_by_author_email_invalid_email_format(mock_metadata_fil
     with pytest.raises(AssertionError, match="All target emails must be valid email addresses"):
         collect_packages_by_author_email(["invalid-email"], str(mock_metadata_files))
 
-def test_collect_packages_by_author_email_empty_email_list(mock_metadata_files):
-    with pytest.raises(AssertionError, match="No target emails provided"):
-        collect_packages_by_author_email([], str(mock_metadata_files))
-
 def test_cli_valid_email(mock_metadata_files):
     output = io.StringIO()
-    sys.argv = ['script_helper/main.py', "test@example.com", "--python_packages_folder", str(mock_metadata_files)]
+    sys.argv = ['script_helper/main.py', "--emails", "test@example.com", "--python_packages_folder", str(mock_metadata_files)]
     with redirect_stdout(output):
         cli()
     captured = output.getvalue()
@@ -88,9 +84,23 @@ def test_cli_valid_email(mock_metadata_files):
     assert "Version: 1.0" in captured
     assert "Summary: A test package" in captured
 
+def test_cli_all_email(mock_metadata_files):
+    output = io.StringIO()
+    sys.argv = ['script_helper/main.py', "--python_packages_folder", str(mock_metadata_files)]
+    with redirect_stdout(output):
+        cli()
+    captured = output.getvalue()
+    assert "Found 2 packages:" in captured
+    assert "package1:" in captured
+    assert "Version: 1.0" in captured
+    assert "Summary: A test package" in captured
+    assert "package2:" in captured
+    assert "Version: 1.0" in captured
+    assert "Summary: Another test package" in captured
+
 def test_cli_multiple_emails(mock_metadata_files):
     output = io.StringIO()
-    sys.argv = ['script_helper/main.py', "test@example.com", "another@example.com", "--python_packages_folder", str(mock_metadata_files)]
+    sys.argv = ['script_helper/main.py', "--emails", "test@example.com", "another@example.com", "--python_packages_folder", str(mock_metadata_files)]
     with redirect_stdout(output):
         cli()
     captured = output.getvalue()
@@ -104,7 +114,7 @@ def test_cli_multiple_emails(mock_metadata_files):
 
 def test_cli_no_matching_email(mock_metadata_files):
     output = io.StringIO()
-    sys.argv = ['script_helper/main.py', "test2@example.com", "--python_packages_folder", str(mock_metadata_files)]
+    sys.argv = ['script_helper/main.py', "--emails", "test2@example.com", "--python_packages_folder", str(mock_metadata_files)]
     with redirect_stdout(output):
         cli()
     captured = output.getvalue()
@@ -113,7 +123,7 @@ def test_cli_no_matching_email(mock_metadata_files):
 def test_cli_save_json(mock_metadata_files):
     if os.path.exists('packages.json'):
         os.remove('packages.json')
-    sys.argv = ['script_helper/main.py', "test@example.com", "--python_packages_folder", str(mock_metadata_files), '--save_json']
+    sys.argv = ['script_helper/main.py', "--emails", "test@example.com", "--python_packages_folder", str(mock_metadata_files), '--save_json']
     cli()
     with open('packages.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
